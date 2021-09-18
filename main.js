@@ -1,8 +1,11 @@
 const Discord = require('discord.js');
+const ytdl = require('ytdl-core');
+const ytSearch = require('yt-search');
+const fs = require('fs');//file system
+//get token from local txt file.
+const token = fs.readFileSync('./client_token.txt').toString(); 
 const client = new Discord.Client( {intents: ['GUILDS', 'GUILD_MESSAGES'] });
 const prefix = '-'; //Prefix is the symbol that will denote a command.
-//file system.
-const fs = require('fs');
 //create a list of commands availible to the bot.
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
@@ -11,6 +14,10 @@ for(const file of commandFiles){
     client.commands.set(command.name, command);
 }
 const queue = new Map();
+const x = {
+    a: 3,
+    b: 5
+}
 
 // online message.
 client.on('ready' , () => {
@@ -21,23 +28,32 @@ client.on('error', error => {
     console.error('The WebSocket encountered an error:', error);
 });
 
+client.on('shardError', error => {
+	console.error('A websocket connection encountered an error:', error);
+});
+
 client.on('message' , message =>{
     // begin by ignoring all messages that don't start with our command prefix, or messages sent by bot.
     if(!message.content.startsWith(prefix) || message.author.bot) return;
     const args = message.content.slice(prefix.length).split(" ");
     const command = args.shift().toLocaleLowerCase(); // command is the first word right after the prefix symbol.
+    const serverQueue = queue.get(message.guild.id);
     //command check
     if(command === 'ping'){
-        client.commands.get('ping').execute(message, args);
+        client.commands.get('ping').execute(message, args, x);
+        //console.log(x);
     } else if (command === 'diceroll' || command === 'dice'){
         client.commands.get('diceroll').execute(message, args, Discord);
     } else if(command === 'play' || command ==='p'){
-        const serverQueue = queue.get(message.guild.id);
-        client.commands.get('play').execute(message, args, serverQueue, queue);
+        //console.log(serverQueue)
+        client.commands.get('play').execute(message, args, serverQueue, queue); //serverQueue is growing after every 'play' call, but not queue...
+        //console.log(serverQueue)
     } else if(command === 'leave'){
-        client.commands.get('leave').execute(message, args);
-    } else if(command === 'help'){ // TODO: check
-        let x = "";
+        client.commands.get('leave').execute(message, args, serverQueue, queue);
+    } else if(command === 'skip') {
+        client.commands.get('skip').execute(message, serverQueue);
+    } else if(command === 'help'){
+        let x = ""; //[12]
         for(const i of client.commands.values()){
             x = x.concat(`-**${i.name}**..........${i.description}\n`)
         }
@@ -46,4 +62,4 @@ client.on('message' , message =>{
     else{message.channel.send("Unknown Command. please use '-help' for usage help. :)")}
 } )
 
-client.login('NTcxODI3MTIxNzYxMTU3MTQw.XMTZgQ.7fUuNWBMrYqkjJdSsJNv_DpW9ds');
+client.login(token);
