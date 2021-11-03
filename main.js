@@ -1,10 +1,8 @@
 const Discord = require('discord.js');
-const ytdl = require('ytdl-core');
-const ytSearch = require('yt-search');
 const fs = require('fs');//file system
 //get token from local txt file.
 const token = fs.readFileSync('./client_token.txt').toString(); 
-const client = new Discord.Client( {intents: ['GUILDS', 'GUILD_MESSAGES'] });
+const client = new Discord.Client( {intents: [Discord.Intents.FLAGS.GUILDS] });
 const prefix = '-'; //Prefix is the symbol that will denote a command.
 //create a list of commands availible to the bot.
 client.commands = new Discord.Collection();
@@ -25,7 +23,9 @@ client.on('ready' , () => {
 })
 
 client.on('error', error => {
-    console.error('The WebSocket encountered an error:', error);
+    console.error('The WebSocket encountered an error!!!!:', error);
+    client.destroy();
+    client.login(token);
 });
 
 client.on('shardError', error => {
@@ -34,6 +34,7 @@ client.on('shardError', error => {
 
 client.on('message' , message =>{
     // begin by ignoring all messages that don't start with our command prefix, or messages sent by bot.
+    if (message.author.bot) return;
     if(!message.content.startsWith(prefix) || message.author.bot) return;
     const args = message.content.slice(prefix.length).split(" ");
     const command = args.shift().toLocaleLowerCase(); // command is the first word right after the prefix symbol.
