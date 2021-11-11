@@ -1,14 +1,18 @@
 import discord
 from discord.ext import commands
 #from discord.flags import Intents
-import music
+import music, test
 
-cogs = [music]
+cogs = [music, test] # add command groups
 
 client = commands.Bot(command_prefix='-', Intents = discord.Intents.all())
 
 for i in range(len(cogs)):
-    cogs[i].setup(client)
+    cogs[i].setup(client) # for each group add commands to client/bot
+
+@client.event
+async def on_ready():
+    print("-------------------Bot is Online!-------------------")
 
 file1 = open('client_token.txt', 'r')
 token = file1.readline()
