@@ -30,9 +30,6 @@ class music(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, arg):
-        #print(arg)
-        
-
         if ctx.voice_client is None: # if bot ins't in VC, make it join
             await ctx.invoke(self.client.get_command('join'))
         #ctx.voice_client.stop()
@@ -43,25 +40,33 @@ class music(commands.Cog):
         try: # assuming args is a url
             ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
             info = ydl.extract_info(arg, download=False)
-            url2 = info['formats'][0]['url']
-            source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
-        except: # TODO: we're assuming here that this was a invalid URL error..
+            if "_type" in info: # if '_type is a field in the dict, it's a playlist
+                for i in info['entries']:   # for every single entry, format the url
+                    url2 = i['formats'][0]['url']
+
+                    source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+                    queue.append(source) # append song to queue regardless
+
+            else: # it is a single song
+                url2 = info['formats'][0]['url'] # playlist cause error here
+                source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+                queue.append(source)
+        except: # if we get Exception that means user didn't give a URL, search as query instead
             print("Uh Oh!" )
             print("Going to query args instead...")
             res = YoutubeSearch(arg, max_results=1).to_dict()
-            #print(res)
             url = "https://youtube.com" + res[0]['url_suffix']
-            #print(url)
             ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
             info = ydl.extract_info(url, download=False)
             url2 = info['formats'][0]['url']
             source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+            queue.append(source) # append song to queue regardless
             
-        if vc.is_playing():
-            queue.append(source)
+        if vc.is_playing(): 
             reply = "***Queued: " + info['title'] + "***"
 
-        else:
+        else: # if nothing is playing: dequeue and play
+            source = queue.pop(0)
             vc.play(source, after=lambda e: music.play_next(self, ctx))
             #vc.play(source)
             reply = "***Now Playing: " + info['title'] + "***"
@@ -74,8 +79,6 @@ class music(commands.Cog):
             vc = ctx.voice_client
             vc.play(source, after=lambda e: music.play_next(self, ctx))
             asyncio.run_coroutine_threadsafe(ctx.send("No more songs in queue"), self.client.loop)
-        return
-
 
     @commands.command()
     async def pause(self, ctx):
