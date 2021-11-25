@@ -1,14 +1,12 @@
 from asyncio.queues import Queue
-import discord
-import asyncio
 from discord.colour import Color
-import youtube_dl
 from discord.ext import commands
 from youtube_dl.utils import UnsupportedError
 from youtube_search import YoutubeSearch
-
-
-#queue = []
+import youtube_dl
+import discord
+import asyncio
+import random
 
 class music(commands.Cog):
     #queue = []
@@ -47,6 +45,21 @@ class music(commands.Cog):
         else:
             self.queue = []
         return await ctx.send("***Music queue cleared!***")
+
+    @commands.command(brief="Shuffles music queue")
+    async def shuffle(self, ctx):
+        if ctx.author.voice is None: # if user isn't in VC
+            return await ctx.send("***You aren't in a voice channel!***")
+        if ctx.voice_client is None: # bot isn't in VC
+            return
+        if len(self.queue) == 0: # no music is queued
+            return await ctx.send("***Empty Queue: nothin' to shuffle :(***")
+        #function
+        song_playing = self.queue[0]
+        self.queue.pop(0)
+        random.shuffle(self.queue)
+        self.queue.insert(0, song_playing)
+        return await ctx.send("***Queue Shuffled ;)***")
 
     @commands.command(brief='Displays the music queue')
     async def queue(self, ctx):
@@ -123,8 +136,7 @@ class music(commands.Cog):
         await ctx.send( reply)
         return
 
-    def play_next(self, ctx):
-        #self.queue.pop(0) # this raises an error bc callback is called on 'voice_client.stop()' calls
+    def play_next(self, ctx): # callback for playing next song
         if len(self.queue) == 0:
             self.queue.clear()
             ctx.voice_client.stop()
