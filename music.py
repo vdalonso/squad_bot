@@ -85,8 +85,11 @@ class music(commands.Cog):
         FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         YDL_OPTIONS = {'format': "bestaudio", 'audio-format': "best", 'audio-quality': 0}
         vc = ctx.voice_client
-
-        try: # assuming args is a url
+        
+        # URL CHECKER
+        if music.url_check_yt(self, ctx, arg): # if arg is a Youtube URL
+            if arg.find('&index=') != -1:
+                arg = arg[: arg.find('&')]
             ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
             info = ydl.extract_info(arg, download=False)
             if "_type" in info: # if '_type is a field in the dict, it's a playlist
@@ -94,9 +97,8 @@ class music(commands.Cog):
                     url2 = i['formats'][0]['url']
                     song = {
                         "source": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
-                        "title": i['title'],             #TODO: title is the title of the playlist here.
+                        "title": i['title'],             
                     }
-                    #source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
                     self.queue.append(song) # append song to queue regardless
 
             else: # it is a single song
@@ -108,9 +110,9 @@ class music(commands.Cog):
                 }
                 #source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
                 self.queue.append(song)
-        except: # if we get Exception that means user didn't give a URL, search as query instead
-            print("Uh Oh!" )
-            print("Going to query args instead...")
+
+        else: # else, just Youtube query the arguement
+            #return await ctx.send("URL not recognized. going to query")
             res = YoutubeSearch(arg, max_results=1).to_dict()
             url = "https://youtube.com" + res[0]['url_suffix']
             ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
@@ -123,7 +125,7 @@ class music(commands.Cog):
             #source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
             #queue.append(song)
             self.queue.append(song) # append song to queue regardless
-            
+        
         if vc.is_playing(): 
             reply = "***Queued: " + info['title'] + "***"
 
@@ -135,6 +137,13 @@ class music(commands.Cog):
             reply = "***Now Playing: " + info['title'] + "***"
         await ctx.send( reply)
         return
+
+    def url_check_yt(self, ctx, arg):
+        extractors = youtube_dl.extractor.gen_extractors()
+        for e in extractors:
+            if e.suitable(arg) and e.IE_NAME != 'generic':
+                return True
+        return False
 
     def play_next(self, ctx): # callback for playing next song
         if len(self.queue) == 0:
