@@ -174,21 +174,18 @@ class music(commands.Cog):
                 return True
         return False
 
-    #TODO: fix this if/else chain
     def play_next(self, ctx): # callback for playing next song
-        if len(self.queue) == 0:
-            self.queue.clear()
-            ctx.voice_client.stop()
-        elif len(self.queue) == 1:
-            self.queue.pop()
-        else:
+        if len(self.queue) >= 1:
             self.queue.pop(0)
+            if len(self.queue) < 1:
+                return
             song = self.queue[0]
             vc = ctx.voice_client
             vc.play(song['source'], after=lambda e: music.play_next(self, ctx))
             reply = "***Now Playing: " + song['title'] + "***"
             asyncio.run_coroutine_threadsafe(ctx.send(reply), self.client.loop)
         return
+
 
     @commands.command(brief='Skips currently playing song')
     async def skip(self, ctx):
