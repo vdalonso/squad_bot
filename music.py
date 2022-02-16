@@ -87,12 +87,29 @@ class music(commands.Cog):
         vc = ctx.voice_client
         
         # URL CHECKER
-        if music.url_check_yt(self, ctx, arg): # if arg is a Youtube URL
-            if arg.find('&index=') != -1:
+        if music.url_check_yt(self, ctx, arg): # TRUE IF: Youtube URL
+            if arg.find('&index=') != -1: # video from some playlist. remove playlist 'link'
                 arg = arg[: arg.find('&')]
-            ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
-            info = ydl.extract_info(arg, download=False)
-            if "_type" in info: # if '_type is a field in the dict, it's a playlist
+            
+            if arg.find('playlist') != -1: # if the link is a playlist URL, download first song first
+                YDL_OPTIONS['playlist_items'] = '1'
+                ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
+                info = ydl.extract_info(arg, download=False)
+                url2 = info['entries'][0]['formats'][0]['url']
+                first_song = {
+                    "source": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
+                    "title": info['entries'][0]['title']
+                }
+                self.queue.append(first_song)
+                if not vc.is_playing(): # if nothing is playing, play first song immediately
+                    vc.play(first_song['source'], after=lambda e: music.play_next(self, ctx))
+                    reply = "***Now Playing: " + first_song['title'] + "***"
+                    await ctx.send( reply)
+                # next, download the rest of the playlist
+                del YDL_OPTIONS['playlist_items']
+                YDL_OPTIONS['playliststart'] = 2 # has to be INT
+                ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
+                info = ydl.extract_info(arg, download=False)
                 for i in info['entries']:   # for every single entry, format the url
                     url2 = i['formats'][0]['url']
                     song = {
@@ -102,18 +119,30 @@ class music(commands.Cog):
                     self.queue.append(song) # append song to queue regardless
 
             else: # it is a single song
-                url2 = info['formats'][0]['url'] # playlist cause error here
-                #print(info)
+                ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
+                info = ydl.extract_info(arg, download=False)
+                url2 = info['formats'][0]['url'] 
                 song = {
                     "source": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
                     "title": info['title']
                 }
-                #source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
                 self.queue.append(song)
+#TODO:
+#some queries return an empty object array (no song).
+#songs that cause this include: Better Off Alone, Katy Perry Teenage Dream,
+#Daft Punk Around the World and Harder Better Faster Stronger.
+#Queries work after some attemps.
+#Max attemps: 29 Song: Harder Better Faster Stronger
 
         else: # else, just Youtube query the arguement
-            #return await ctx.send("URL not recognized. going to query")
-            res = YoutubeSearch(arg, max_results=1).to_dict()
+            x = 0
+            while (True):#keep searching until YTsearch returns something
+                print("Attempt No. : %d" %(x))
+                res = YoutubeSearch(arg, max_results=1).to_dict()
+                if(len(res) >= 1):
+                    break
+                x +=1
+            #print(res)
             url = "https://youtube.com" + res[0]['url_suffix']
             ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
             info = ydl.extract_info(url, download=False)
@@ -145,6 +174,7 @@ class music(commands.Cog):
                 return True
         return False
 
+    #TODO: fix this if/else chain
     def play_next(self, ctx): # callback for playing next song
         if len(self.queue) == 0:
             self.queue.clear()
