@@ -15,6 +15,6 @@ for i in range(len(cogs)):
 async def on_ready():
     print("-------------------Bot is Online!-------------------")
 
-file1 = open('client_token.txt', 'r')
+file1 = open('../client_token.txt', 'r')
 token = file1.readline()
 client.run(token)
