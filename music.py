@@ -7,6 +7,8 @@ import youtube_dl
 import discord
 import asyncio
 import random
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
 class music(commands.Cog):
     #queue = []
@@ -14,6 +16,13 @@ class music(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.queue = []
+        #spotify API setup
+        file2 = open("../spotify_token.txt", 'r')
+        token2 = file2.readlines()
+        #print(token2[0].strip())
+        client_credentials_manager = SpotifyClientCredentials(client_id=token2[0].strip(), client_secret=token2[1].strip())
+        self.sp = spotipy.Spotify(client_credentials_manager = client_credentials_manager)
+        file2.close()
 
     @commands.command(brief='Joins VC the user is in')
     async def join(self, ctx):
@@ -81,7 +90,6 @@ class music(commands.Cog):
             return
         if ctx.voice_client is None: # if bot ins't in VC, make it join
             await ctx.invoke(self.client.get_command('join'))
-        #ctx.voice_client.stop()
         FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         YDL_OPTIONS = {'format': "bestaudio", 'audio-format': "best", 'audio-quality': 0}
         vc = ctx.voice_client
@@ -127,12 +135,25 @@ class music(commands.Cog):
                     "title": info['title']
                 }
                 self.queue.append(song)
-#TODO:
-#some queries return an empty object array (no song).
-#songs that cause this include: Better Off Alone, Katy Perry Teenage Dream,
-#Daft Punk Around the World and Harder Better Faster Stronger.
-#Queries work after some attemps.
-#Max attemps: 29 Song: Harder Better Faster Stronger
+
+        #TODO: check if input is a Spotify URL. convert to YT tracks and load. note: YT Shorts breaks youtube-dl
+        elif arg.find("spotify") != -1:     #url is a spotify url
+            uri = arg.split("/")[-1].split("?")[0]
+            if arg.find("playlist") != -1:  #url is a spotify playlist
+                for track in self.sp.playlist_tracks(uri)["items"]:
+                    spotQuery = track["track"]["artists"][0]["name"] + " " + track['track']['album']['name'] + " " + track["track"]["name"]
+                    await ctx.invoke(self.client.get_command('play'), arg = spotQuery)
+            elif arg.find("album") != -1:   #url is a spotify album
+                for track in self.sp.album_tracks(uri)["items"]:
+                    spotQuery = track['artists'][0]['name'] + " " + track['name']
+                    await ctx.invoke(self.client.get_command('play'), arg = spotQuery)
+            elif arg.find("track") != -1:   #url is a spotify track
+                track = self.sp.track(uri)
+                spotQuery = track['artists'][0]['name'] + " " + track['name']
+                await ctx.invoke(self.client.get_command('play'), arg = spotQuery)
+            else:
+                await ctx.send("***uhhhhh, idk what it is you just sent LOLOLOL***")
+            return
 
         else: # else, just Youtube query the arguement
             x = 0
@@ -142,7 +163,6 @@ class music(commands.Cog):
                 if(len(res) >= 1):
                     break
                 x +=1
-            #print(res)
             url = "https://youtube.com" + res[0]['url_suffix']
             ydl = youtube_dl.YoutubeDL(YDL_OPTIONS)
             info = ydl.extract_info(url, download=False)
@@ -151,8 +171,6 @@ class music(commands.Cog):
                 "source": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
                 "title": info['title'],
             }
-            #source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
-            #queue.append(song)
             self.queue.append(song) # append song to queue regardless
         
         if vc.is_playing(): 
@@ -160,14 +178,12 @@ class music(commands.Cog):
 
         else: # if nothing is playing: dequeue and play
             song = self.queue[0]
-            #song = self.queue.pop(0)
             vc.play(song['source'], after=lambda e: music.play_next(self, ctx))
-            #vc.play(source)
             reply = "***Now Playing: " + info['title'] + "***"
         await ctx.send( reply)
         return
 
-    def url_check_yt(self, ctx, arg):
+    def url_check_yt(self, ctx, arg):# checks if URL is YT URL
         extractors = youtube_dl.extractor.gen_extractors()
         for e in extractors:
             if e.suitable(arg) and e.IE_NAME != 'generic':
