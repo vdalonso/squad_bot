@@ -19,7 +19,6 @@ class music(commands.Cog):
         #spotify API setup
         file2 = open("../spotify_token.txt", 'r')
         token2 = file2.readlines()
-        #print(token2[0].strip())
         client_credentials_manager = SpotifyClientCredentials(client_id=token2[0].strip(), client_secret=token2[1].strip())
         self.sp = spotipy.Spotify(client_credentials_manager = client_credentials_manager)
         file2.close()
