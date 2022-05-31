@@ -1,3 +1,4 @@
+from turtle import title
 import discord
 import asyncio
 import pandas as pd
@@ -7,25 +8,39 @@ import youtube_dl
 
 BOT_CHANNEL = 799877996311085066
 LEADERBOARD_PATH = "../leaderboard.csv"
+#EMOJI_LIST = ['\U0001F44D', '\U0001F44D']
+EMOJI_LIST = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
 
 class utility(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-    @commands.command()
+    @commands.command(brief="Cast a vote! Enter things to vote on, send 'done' when finished")
     async def vote(self, ctx):
         await ctx.send("***Enter options to vote on (send 'done' when finished)***")
         candidates = []
         channel = ctx.channel
         def check (m):
             return m.channel == channel
-
+        # collect all candidates from text channel
         msg = await self.client.wait_for('message', check=check, timeout=90.0)
-        while(msg.content != 'done'):
+        while(msg.content != 'done' or len(candidates) >= 10):
             candidates.append(msg.content)
-            msg = await self.client.wait_for('message', check=check, timeout=120.0)
-        
-        return await ctx.send("***donezo!\n{list}***".format(list = candidates))
+            msg = await self.client.wait_for('message', check=check, timeout=90.0)
+        #string-ify the candidates along with respective emoji's
+        list = ""
+        for index, c in enumerate(candidates):
+            list += EMOJI_LIST[index] +": " + c + "\n"
+
+        vote_msg = await ctx.send(embed=discord.Embed(
+            title="Hit the Polling Station, it's time to Vote!",
+            color=discord.Color.blurple(),
+            description=list)
+        )
+        #add a reaction to embed for each candidate (the voting mechanism)
+        for i in range(list.count('\n')):
+            await vote_msg.add_reaction(EMOJI_LIST[i])
+        return
         
     @commands.command(brief="Check if the bot is online")
     async def ping(self, ctx):
