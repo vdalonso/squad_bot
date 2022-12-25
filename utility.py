@@ -2,18 +2,40 @@ from turtle import title
 import discord
 import asyncio
 import pandas as pd
+import pickle
 from discord.ext import commands
-from youtube_dl.utils import UnsupportedError
-import youtube_dl
 
 BOT_CHANNEL = 799877996311085066
 LEADERBOARD_PATH = "../leaderboard.csv"
-#EMOJI_LIST = ['\U0001F44D', '\U0001F44D']
+EVENTS_PATH = "../events.pkl"
 EMOJI_LIST = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+
 
 class utility(commands.Cog):
     def __init__(self, client):
         self.client = client
+        with open(EVENTS_PATH, 'rb') as input: # load events
+            self.events = pickle.load(input)
+
+    @commands.command()
+    async def schedule(self, ctx, arg):
+        if(arg == 'view'):
+            await ctx.send("viewing")
+            await utility.scheduleView(self, ctx)
+        elif(arg == 'add'):
+            await ctx.send("adding new event")
+        else:
+            await ctx.send("***Invalid arguement. Options are 'view', 'add', 'invite', 'remove'***")
+
+    async def scheduleView(self, ctx):
+        res = ""
+        for i in self.events:
+            res += "___" + i.title + "___\n"
+        await ctx.send(embed=discord.Embed(
+            title="Events",
+            description=res
+        ))
+        return
 
     @commands.command(brief="Cast a vote! Enter things to vote on, send 'done' when finished")
     async def vote(self, ctx):
@@ -111,3 +133,11 @@ class utility(commands.Cog):
 
 def setup(client):
     client.add_cog(utility(client))
+
+class Event:
+    attendees = []
+    def __init__(self, title, time, date, weekly):
+        self.title = title
+        self.time = time
+        self.date = date
+        self.weekly = weekly

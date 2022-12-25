@@ -1,9 +1,10 @@
 import discord
 from discord.ext import commands
+from utility import Event
 #from discord.flags import Intents
 import music, test, utility
 
-bot_shit_channel = 799877996311085066
+bot_channel = 799877996311085066
 cogs = [music, utility, test] # add command groups
 
 client = commands.Bot(command_prefix='-', Intents = discord.Intents.all())
@@ -19,6 +20,8 @@ async def on_ready():
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return await ctx.send("***Unknown Command, silly***")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        return await ctx.send("***This command requires an arguement***")
     raise error
 
 file1 = open('../client_token.txt', 'r')
